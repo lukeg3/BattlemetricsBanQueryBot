@@ -13,9 +13,6 @@
 """
 # import neccesary modules
 import configparser
-#from http import client
-#from lib2to3.pgen2.token import NOTEQUAL
-#from pickle import NONE
 import discord
 import requests
 import os

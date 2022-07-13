@@ -13,9 +13,9 @@
 """
 # import neccesary modules
 import configparser
-from http import client
-from lib2to3.pgen2.token import NOTEQUAL
-from pickle import NONE
+#from http import client
+#from lib2to3.pgen2.token import NOTEQUAL
+#from pickle import NONE
 import discord
 import requests
 import os
@@ -34,7 +34,6 @@ DC_TEXT_CHANNEL_NAME = config["Discord"]["discordTextChannelName"]
 
 BM_TOKEN = config["Battlemetrics"]["battlemetricsToken"] #battlemetric api token
 BM_BANLIST_ID = config["Battlemetrics"]["banListId"] #battlemetrics ban list id
-BM_POLLING_INTERVAL = int(config["Battlemetrics"]["pollingInterval"]) #how often the api is polled (default 10 minutes)
 
 HEADERS = {"Authorization" : "Bearer " + BM_TOKEN}
 BANLISTURL = "https://api.battlemetrics.com/bans?filter[banList]=" + BM_BANLIST_ID + "&include=user,server"
@@ -82,11 +81,6 @@ class BMQueryBot(discord.Client):
     def __init__(self, **options):
         """ Initialize """
         super().__init__(**options)
-        self.prevList = None
-
-        self.event = threading.Event()
-        self.thread = threading.Thread(target=self.polling_thread, args=(self.event,))
-        self.thread.start()
     client = discord.Client()
 
     async def on_ready(self):
@@ -162,7 +156,6 @@ class BMQueryBot(discord.Client):
         """ Create help embed for this bot. """
         embedVar = discord.Embed(title="Discord Command List", color=0x00ff00)
         embedVar.add_field(name="!help", value="Displays this help message", inline=False)
-        embedVar.add_field(name="!manualbanlistpoll", value="Manually refreshes ban list and checks for changes", inline=False)
         embedVar.add_field(name="!lastban", value="DMs you the last ban made and its information", inline=False)
         embedVar.add_field(name="!user 'steamid'", value="Searches for a players ban history by SteamID. Replace 'steamid' with the players SteamID", inline=False)
         return embedVar
@@ -267,10 +260,6 @@ def config_check():
     cfg = config["Battlemetrics"]["banListId"]
     if cfg == "None":
         raise Exception("Battlemetrics banlist id is not set.")
-    
-    cfg = config["Battlemetrics"]["pollingInterval"]
-    if cfg == "None":
-        raise Exception("Battlemetrics polling interval is not set.")
 
 
 

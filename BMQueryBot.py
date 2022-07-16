@@ -13,6 +13,7 @@
 """
 # import neccesary modules
 import configparser
+from pickle import NONE
 import discord
 import requests
 import os
@@ -45,7 +46,8 @@ class PlayerInfo:
     MOST_RECENT_NOTE= 5
     BMLINK          = 6
     COMMBANLINK     = 7
-    def __init__(self, name, sid, na, ne, mr, mrn, bm, cbl):
+    PFP             = 8
+    def __init__(self, name, sid, na, ne, mr, mrn, bm, cbl, pfp):
         self.PLAYER_NAME = name
         self.STEAM_ID = sid
         self.NUM_ACTIVE = na
@@ -54,6 +56,7 @@ class PlayerInfo:
         self.MOST_RECENT_NOTE = mrn
         self.BMLINK = bm
         self.COMMBANLINK = cbl
+        self.PFP = pfp
     def name(self):
         return self.PLAYER_NAME
     def steamID(self):
@@ -70,6 +73,8 @@ class PlayerInfo:
         return self.BMLINK
     def communityBanLink(self):
         return self.COMMBANLINK
+    def pfp(self):
+        return self.PFP
 
 
 
@@ -137,10 +142,13 @@ class BMQueryBot(discord.Client):
                         print("Pulling playerid")
                         playerId = get_playerID(steamId, HEADERS)
                         if playerId != None:
-                            if len(playerId) == 9:
+                            if len(playerId) > 0:
                                 playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
                                 print("Making user embed to channel")
-                                await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                                if self.create_player_embed(self, playerId, playerInfoURL, HEADERS) != None:
+                                    await message.channel.send(embed = self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                                else:
+                                    await message.channel.send("```Player has no ban history```")
                             else:
                                 print("PlayerID not of correct length")
                                 await message.author.send("No User Profile Found, check battlemetrics")
@@ -164,7 +172,10 @@ class BMQueryBot(discord.Client):
     def create_player_embed(trash,self, id, url, headers):
         """Creates embed of a players ban history and information"""
         card = self.make_playercard(self, id, url, headers)
+        if card == None:
+            return None
         embedVar = discord.Embed(title="Player Information", color=0x00ff00)
+        embedVar.set_thumbnail(url=PlayerInfo.pfp(card))
         embedVar.add_field(name="Player Name", value=PlayerInfo.name(card), inline=False)
         embedVar.add_field(name="SteamID", value=PlayerInfo.steamID(card), inline=False)
         embedVar.add_field(name="Number of active bans:", value=PlayerInfo.numActive(card), inline=False)
@@ -184,7 +195,9 @@ class BMQueryBot(discord.Client):
             print("make_playercard json exception",e)
             return []
         card = response.json()
-        playerNames, steamIds, numact, numexp, recent, note, bmurl, cblink = ([] for i in range(8))
+        if card["meta"]["total"] == 0:
+            return None
+        playerNames, steamIds, numact, numexp, recent, note, bmurl, cblink, profileLink = ([] for i in range(9))
         try:
             playerNames.append(card["data"][0]["meta"]["player"])
         except Exception as e:
@@ -214,7 +227,8 @@ class BMQueryBot(discord.Client):
                 note.append("No ban note attached")
         bmurl.append("https://www.battlemetrics.com/rcon/players/"+id)
         cblink.append("https://communitybanlist.com/search/"+steamIds[0])
-        returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0])
+        profileLink.append(card["data"][0]["attributes"]["identifiers"][0]["metadata"]["profile"]["avatarfull"])
+        returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0], profileLink[0])
         return returnList
 def get_lastban(url, headers):
     try:

@@ -126,7 +126,8 @@ class BMQueryBot(discord.Client):
                 playerId = get_lastban(BANLISTURL, HEADERS)
                 if playerId != None:
                     playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
-                    await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                    steamID = None
+                    await message.channel.send(embed=self.create_player_embed(self, playerId, steamID, playerInfoURL, HEADERS))
 
             elif command == "HELP": #command DMs the bot commands to the user that executes the command
                 print("Messaging help information")
@@ -145,10 +146,7 @@ class BMQueryBot(discord.Client):
                             if len(playerId) > 0:
                                 playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
                                 print("Making user embed to channel")
-                                if self.create_player_embed(self, playerId, playerInfoURL, HEADERS) != None:
-                                    await message.channel.send(embed = self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
-                                else:
-                                    await message.channel.send("```Player has no ban history```")
+                                await message.channel.send(embed = self.create_player_embed(self, playerId, steamId, playerInfoURL, HEADERS))
                             else:
                                 print("PlayerID not of correct length")
                                 await message.author.send("No User Profile Found, check battlemetrics")
@@ -159,7 +157,7 @@ class BMQueryBot(discord.Client):
                     return[] 
     def create_help_embed(self):
         """ Create help embed for this bot. """
-        embedVar = discord.Embed(title="Discord Command List", color=0x00ff00)
+        embedVar = discord.Embed(title="Discord Command List", color=0x0000FF)
         embedVar.add_field(name="!help", value="Displays this help message", inline=False)
         embedVar.add_field(name="!lastban", value="DMs you the last ban made and its information", inline=False)
         embedVar.add_field(name="!user 'steamid'", value="Searches for a players ban history by SteamID. Replace 'steamid' with the players SteamID", inline=False)
@@ -169,12 +167,24 @@ class BMQueryBot(discord.Client):
         """ Send embed to text channel. """
         self.loop.create_task(self.get_channel(DC_TEXT_CHANNEL_ID).send(embed=embedVar))
     
-    def create_player_embed(trash,self, id, url, headers):
+    def create_player_embed(trash,self, id, steamID, url, headers):
         """Creates embed of a players ban history and information"""
         card = self.make_playercard(self, id, url, headers)
+        """if the player has no ban history then the card will be None 
+        and we manually create the embed"""
         if card == None:
-            return None
-        embedVar = discord.Embed(title="Player Information", color=0x00ff00)
+            embedVar = discord.Embed(title="Player Information", color=0xff0000)
+            embedVar.set_thumbnail(url="https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg")
+            embedVar.add_field(name="Player Name", value=get_playername(steamID,headers), inline=False)
+            embedVar.add_field(name="SteamID", value=steamID, inline=False)
+            embedVar.add_field(name="Number of active bans:", value="0", inline=False)
+            embedVar.add_field(name="Number of expired bans:", value="0", inline=False)
+            embedVar.add_field(name="Most recent ban reason:", value="None", inline=False)
+            embedVar.add_field(name="Most recent ban note:", value="None", inline=False)
+            embedVar.add_field(name="Battlemetrics Link:", value="https://www.battlemetrics.com/rcon/players/"+id, inline=False)
+            embedVar.add_field(name="Community Ban List Link:", value="https://communitybanlist.com/search/"+steamID, inline=False)
+            return embedVar
+        embedVar = discord.Embed(title="Player Information", color=0xff0000)
         embedVar.set_thumbnail(url=PlayerInfo.pfp(card))
         embedVar.add_field(name="Player Name", value=PlayerInfo.name(card), inline=False)
         embedVar.add_field(name="SteamID", value=PlayerInfo.steamID(card), inline=False)
@@ -195,6 +205,8 @@ class BMQueryBot(discord.Client):
             print("make_playercard json exception",e)
             return []
         card = response.json()
+        """if there are no previous bans for the player the card 
+        will be empty so we return None"""
         if card["meta"]["total"] == 0:
             return None
         playerNames, steamIds, numact, numexp, recent, note, bmurl, cblink, profileLink = ([] for i in range(9))
@@ -230,7 +242,9 @@ class BMQueryBot(discord.Client):
         profileLink.append(card["data"][0]["attributes"]["identifiers"][0]["metadata"]["profile"]["avatarfull"])
         returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0], profileLink[0])
         return returnList
+
 def get_lastban(url, headers):
+    """Polls the battlemetrics api for the last player banned"""
     try:
             response = requests.get(url, headers=headers) 
     except Exception as e:
@@ -244,6 +258,20 @@ def get_lastban(url, headers):
             break
     print(playerID)
     return playerID
+
+def get_playername(id, headers):
+    """Polls the battlemetrics api for the player's name"""
+    url = "https://api.battlemetrics.com/players?filter[search]=" + id
+    try:
+        response = requests.get(url, headers=headers) 
+    except Exception as e:
+        print("get_playerID exception", e)
+        return []
+    names = response.json()
+    name = names["data"][0]["attributes"]["name"]
+    if name == None:
+        name = "Unknown"
+    return name
 
 def get_playerID(steamID, headers):
     """Returns the battlemetrics player id number

@@ -118,9 +118,10 @@ class BMQueryBot(discord.Client):
             """lastban needs to be implemented"""
             if command == "LASTBAN": #command DMs the user that executes the command the last ban
                 print("Pulling last ban")
-               # banList = get_banlist(BANLISTURL, HEADERS)
-               # if banList != []:
-                #    await message.author.send(embed=self.create_embed_of_ban(banList[0]))
+                playerId = get_lastban(BANLISTURL, HEADERS)
+                if playerId != None:
+                    playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
+                    await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
 
             elif command == "HELP": #command DMs the bot commands to the user that executes the command
                 print("Messaging help information")
@@ -148,7 +149,6 @@ class BMQueryBot(discord.Client):
                 except Exception as e:
                     print("User command exception",e)
                     return[] 
-
     def create_help_embed(self):
         """ Create help embed for this bot. """
         embedVar = discord.Embed(title="Discord Command List", color=0x00ff00)
@@ -188,7 +188,7 @@ class BMQueryBot(discord.Client):
         try:
             playerNames.append(card["data"][0]["meta"]["player"])
         except Exception as e:
-            print("Unknown Player Name",e)
+            print("Unknown Player Name:",e)
             playerNames.append("Unknown Player")
         for i in range(10):
             if card["data"][0]["attributes"]["identifiers"][i]["type"]=="steamID":
@@ -216,7 +216,20 @@ class BMQueryBot(discord.Client):
         cblink.append("https://communitybanlist.com/search/"+steamIds[0])
         returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0])
         return returnList
-
+def get_lastban(url, headers):
+    try:
+            response = requests.get(url, headers=headers) 
+    except Exception as e:
+        print("get_lastban json exception",e)
+        return None
+    bans = response.json()
+    playerID = None
+    for ban in bans["data"]:
+        if ban["type"] == "ban":
+            playerID = ban["relationships"]["player"]["data"]["id"]
+            break
+    print(playerID)
+    return playerID
 
 def get_playerID(steamID, headers):
     """Returns the battlemetrics player id number
@@ -234,7 +247,6 @@ def get_playerID(steamID, headers):
     if playerID==None:
         playerID = "Unknown Player"
     return playerID
-    
     
 def config_check():
     """ Verify that config is set. """
@@ -257,10 +269,6 @@ def config_check():
     cfg = config["Battlemetrics"]["banListId"]
     if cfg == "None":
         raise Exception("Battlemetrics banlist id is not set.")
-
-
-
-
 
 if __name__ == "__main__":
     config_check()

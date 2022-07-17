@@ -175,14 +175,18 @@ class BMQueryBot(discord.Client):
         if card == None:
             embedVar = discord.Embed(title="Player Information", color=0xff0000)
             embedVar.set_thumbnail(url="https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg")
-            embedVar.add_field(name="Player Name", value=get_playername(steamID,headers), inline=False)
+            embedVar.add_field(name="Player Name", value=get_playername(id,headers), inline=False)
             embedVar.add_field(name="SteamID", value=steamID, inline=False)
             embedVar.add_field(name="Number of active bans:", value="0", inline=False)
             embedVar.add_field(name="Number of expired bans:", value="0", inline=False)
             embedVar.add_field(name="Most recent ban reason:", value="None", inline=False)
             embedVar.add_field(name="Most recent ban note:", value="None", inline=False)
             embedVar.add_field(name="Battlemetrics Link:", value="https://www.battlemetrics.com/rcon/players/"+id, inline=False)
-            embedVar.add_field(name="Community Ban List Link:", value="https://communitybanlist.com/search/"+steamID, inline=False)
+            try:
+                embedVar.add_field(name="Community Ban List Link:", value="https://communitybanlist.com/search/"+steamID, inline=False)
+            except Exception as e:
+                print("create_player_embed exception:",e)
+                embedVar.add_field(name="Community Ban List Link:", value="https://communitybanlist.com/search/", inline=False)
             return embedVar
         embedVar = discord.Embed(title="Player Information", color=0xff0000)
         embedVar.set_thumbnail(url=PlayerInfo.pfp(card))
@@ -207,18 +211,20 @@ class BMQueryBot(discord.Client):
         card = response.json()
         """if there are no previous bans for the player the card 
         will be empty so we return None"""
-        if card["meta"]["total"] == 0:
-            return None
         playerNames, steamIds, numact, numexp, recent, note, bmurl, cblink, profileLink = ([] for i in range(9))
+        try:
+            for i in range(10):
+                if card["data"][0]["attributes"]["identifiers"][i]["type"]=="steamID":
+                    steamIds.append(card["data"][0]["attributes"]["identifiers"][i]["identifier"])
+                    break
+        except Exception as e:
+            print("no previous bans")
+            return None
         try:
             playerNames.append(card["data"][0]["meta"]["player"])
         except Exception as e:
             print("Unknown Player Name:",e)
             playerNames.append("Unknown Player")
-        for i in range(10):
-            if card["data"][0]["attributes"]["identifiers"][i]["type"]=="steamID":
-                steamIds.append(card["data"][0]["attributes"]["identifiers"][i]["identifier"])
-                break
         numact.append(card["meta"]["active"])
         numexp.append(card["meta"]["expired"])
         try:
@@ -239,7 +245,10 @@ class BMQueryBot(discord.Client):
                 note.append("No ban note attached")
         bmurl.append("https://www.battlemetrics.com/rcon/players/"+id)
         cblink.append("https://communitybanlist.com/search/"+steamIds[0])
-        profileLink.append(card["data"][0]["attributes"]["identifiers"][0]["metadata"]["profile"]["avatarfull"])
+        for i in range(10):
+            if card["data"][0]["attributes"]["identifiers"][i]["type"] == "steamID":
+                profileLink.append(card["data"][0]["attributes"]["identifiers"][i]["metadata"]["profile"]["avatarfull"])
+                break
         returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0], profileLink[0])
         return returnList
 
@@ -261,14 +270,14 @@ def get_lastban(url, headers):
 
 def get_playername(id, headers):
     """Polls the battlemetrics api for the player's name"""
-    url = "https://api.battlemetrics.com/players?filter[search]=" + id
+    url = "https://api.battlemetrics.com/players/" + id
     try:
         response = requests.get(url, headers=headers) 
     except Exception as e:
         print("get_playerID exception", e)
         return []
     names = response.json()
-    name = names["data"][0]["attributes"]["name"]
+    name = names["data"]["attributes"]["name"]
     if name == None:
         name = "Unknown"
     return name

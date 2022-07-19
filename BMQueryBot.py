@@ -13,10 +13,13 @@
 """
 # import neccesary modules
 import configparser
+from msilib.schema import AdminExecuteSequence
 from pickle import NONE
+import re
 import discord
 import requests
 import os
+
 
 # Read configuration file
 config = configparser.ConfigParser()
@@ -47,7 +50,8 @@ class PlayerInfo:
     BMLINK          = 6
     COMMBANLINK     = 7
     PFP             = 8
-    def __init__(self, name, sid, na, ne, mr, mrn, bm, cbl, pfp):
+    ADMIN_NAME      = 9
+    def __init__(self, name, sid, na, ne, mr, mrn, bm, cbl, pfp, aname):
         self.PLAYER_NAME = name
         self.STEAM_ID = sid
         self.NUM_ACTIVE = na
@@ -57,6 +61,7 @@ class PlayerInfo:
         self.BMLINK = bm
         self.COMMBANLINK = cbl
         self.PFP = pfp
+        self.ADMIN_NAME = aname
     def name(self):
         return self.PLAYER_NAME
     def steamID(self):
@@ -75,6 +80,8 @@ class PlayerInfo:
         return self.COMMBANLINK
     def pfp(self):
         return self.PFP
+    def adminName(self):
+        return self.ADMIN_NAME
 
 
 
@@ -181,6 +188,7 @@ class BMQueryBot(discord.Client):
             embedVar.add_field(name="Number of expired bans:", value="0", inline=False)
             embedVar.add_field(name="Most recent ban reason:", value="None", inline=False)
             embedVar.add_field(name="Most recent ban note:", value="None", inline=False)
+            embedVar.add_field(name="Banning Admin:", value="None", inline=False)
             embedVar.add_field(name="Battlemetrics Link:", value="https://www.battlemetrics.com/rcon/players/"+id, inline=False)
             try:
                 embedVar.add_field(name="Community Ban List Link:", value="https://communitybanlist.com/search/"+steamID, inline=False)
@@ -196,6 +204,7 @@ class BMQueryBot(discord.Client):
         embedVar.add_field(name="Number of expired bans:", value=PlayerInfo.numExpired(card), inline=False)
         embedVar.add_field(name="Most recent ban reason:", value=PlayerInfo.mostRecent(card), inline=False)
         embedVar.add_field(name="Most recent ban note:", value=PlayerInfo.mostRecentNote(card), inline=False)
+        embedVar.add_field(name="Banning Admin(s):", value=PlayerInfo.adminName(card), inline=False)
         embedVar.add_field(name="Battlemetrics Link:", value=PlayerInfo.bmLink(card), inline=False)
         embedVar.add_field(name="Community Ban List Link:", value=PlayerInfo.communityBanLink(card), inline=False)
         return embedVar
@@ -211,7 +220,7 @@ class BMQueryBot(discord.Client):
         card = response.json()
         """if there are no previous bans for the player the card 
         will be empty so we return None"""
-        playerNames, steamIds, numact, numexp, recent, note, bmurl, cblink, profileLink = ([] for i in range(9))
+        playerNames, steamIds, numact, numexp, recent, note, bmurl, cblink, profileLink, adminName = ([] for i in range(10))
         try:
             for i in range(10):
                 if card["data"][0]["attributes"]["identifiers"][i]["type"]=="steamID":
@@ -249,7 +258,16 @@ class BMQueryBot(discord.Client):
             if card["data"][0]["attributes"]["identifiers"][i]["type"] == "steamID":
                 profileLink.append(card["data"][0]["attributes"]["identifiers"][i]["metadata"]["profile"]["avatarfull"])
                 break
-        returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0], profileLink[0])
+        for i in range(10):
+            if card["included"][i]["type"] == "user":
+                adminName.append(card["included"][i]["attributes"]["nickname"])
+                try:
+                    if card["included"][i+1]["type"] == "user":
+                        continue
+                except:
+                    break
+        aNames = ", ".join(adminName) 
+        returnList = PlayerInfo(playerNames[0], steamIds[0], numact[0], numexp[0], recent[0], note[0], bmurl[0],  cblink[0], profileLink[0], aNames)
         return returnList
 
 def get_lastban(url, headers):

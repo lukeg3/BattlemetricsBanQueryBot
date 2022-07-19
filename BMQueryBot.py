@@ -28,7 +28,7 @@ PREFIX = config["General"]["prefix"] #discord command prefix
 DC_ADMINS = config["Discord"]["admins"].replace(" ", "").split(",") #discord admins list
 DC_TOKEN = config["Discord"]["discordToken"] #discord Oauth token 
 DC_TEXT_CHANNEL_ID = int(config["Discord"]["discordTextChannelId"]) #discord channel identifier
-DC_TEXT_CHANNEL_NAME = config["Discord"]["discordTextChannelName"]
+DC_TEXT_CHANNEL_NAME = config["Discord"]["discordTextChannelName"].replace(" ", "").split(",")
 
 BM_TOKEN = config["Battlemetrics"]["battlemetricsToken"] #battlemetric api token
 BM_BANLIST_ID = config["Battlemetrics"]["banListId"] #battlemetrics ban list id

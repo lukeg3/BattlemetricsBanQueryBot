@@ -13,7 +13,6 @@
 """
 # import neccesary modules
 import configparser
-from msilib.schema import AdminExecuteSequence
 from pickle import NONE
 import re
 import discord

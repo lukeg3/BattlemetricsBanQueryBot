@@ -30,7 +30,7 @@ PREFIX = config["General"]["prefix"] #discord command prefix
 DC_ADMINS = config["Discord"]["admins"].replace(" ", "").split(",") #discord admins list
 DC_TOKEN = config["Discord"]["discordToken"] #discord Oauth token 
 DC_TEXT_CHANNEL_ID = int(config["Discord"]["discordTextChannelId"]) #discord channel identifier
-DC_TEXT_CHANNEL_NAME = config["Discord"]["discordTextChannelName"].replace(" ", "").split(",")
+DC_TEXT_CHANNEL_NAME = config["Discord"]["discordTextChannelName"].replace(" ", "").split(",") #discord text channel Names
 
 BM_TOKEN = config["Battlemetrics"]["battlemetricsToken"] #battlemetric api token
 BM_BANLIST_ID = config["Battlemetrics"]["banListId"] #battlemetrics ban list id
@@ -159,7 +159,7 @@ class BMQueryBot(discord.Client):
                         else:
                             await message.author.send("No User Profile Found, check battlemetrics")
                 except Exception as e:
-                    print("User command exception",e)
+                    print("User command exception:",e)
                     return[] 
     def create_help_embed(self):
         """ Create help embed for this bot. """
@@ -168,10 +168,6 @@ class BMQueryBot(discord.Client):
         embedVar.add_field(name="!lastban", value="DMs you the last ban made and its information", inline=False)
         embedVar.add_field(name="!user 'steamid'", value="Searches for a players ban history by SteamID. Replace 'steamid' with the players SteamID", inline=False)
         return embedVar
-
-    def send_embed_to_text_channel(self, embedVar):
-        """ Send embed to text channel. """
-        self.loop.create_task(self.get_channel(DC_TEXT_CHANNEL_ID).send(embed=embedVar))
     
     def create_player_embed(trash,self, id, steamID, url, headers):
         """Creates embed of a players ban history and information"""
@@ -185,10 +181,14 @@ class BMQueryBot(discord.Client):
             embedVar.add_field(name="SteamID", value=steamID, inline=False)
             embedVar.add_field(name="Number of active bans:", value="0", inline=False)
             embedVar.add_field(name="Number of expired bans:", value="0", inline=False)
-            embedVar.add_field(name="Most recent ban reason:", value="None", inline=False)
-            embedVar.add_field(name="Most recent ban note:", value="None", inline=False)
-            embedVar.add_field(name="Banning Admin:", value="None", inline=False)
-            embedVar.add_field(name="Battlemetrics Link:", value="https://www.battlemetrics.com/rcon/players/"+id, inline=False)
+            """optional since all fields are empty"""
+            #embedVar.add_field(name="Most recent ban reason:", value="None", inline=False)
+            #embedVar.add_field(name="Most recent ban note:", value="None", inline=False)
+            #embedVar.add_field(name="Banning Admin:", value="None", inline=False)
+            if id == "Unknown Player":
+                embedVar.add_field(name="Battlemetrics Link:", value="https://www.battlemetrics.com/rcon/players/", inline=False)
+            else:
+                embedVar.add_field(name="Battlemetrics Link:", value="https://www.battlemetrics.com/rcon/players/"+id, inline=False)
             try:
                 embedVar.add_field(name="Community Ban List Link:", value="https://communitybanlist.com/search/"+steamID, inline=False)
             except Exception as e:
@@ -293,8 +293,13 @@ def get_playername(id, headers):
     except Exception as e:
         print("get_playerID exception", e)
         return []
+    name = None
     names = response.json()
-    name = names["data"]["attributes"]["name"]
+    try:
+        name = names["data"]["attributes"]["name"]
+    except Exception as e:
+        name = "Unknown"
+        print("Unknown playername")
     if name == None:
         name = "Unknown"
     return name

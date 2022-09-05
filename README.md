@@ -35,6 +35,9 @@ Get the battlemetrics ban list id from [Battlemetrics Ban Lists](https://www.bat
 Bans" on the ban list you want to use. Then your URL will be https://www.battlemetrics.com/rcon/bans/?filter%5BbanList%5D="BANLIST ID IS HERE" copy the part that is where "BANLIST ID IS HERE" is and put it in the banListId field 
 in the config.ini file.
 
+## Example Embed
+![image](https://user-images.githubusercontent.com/94412315/188498751-9ec251b3-4168-4a82-9e23-96f9fa4eeeb7.png)
+
 ## Games this works with
 
 At this time, this bot has only been tested with Squad. It should work for other games with slight modifications to the data you wish to embed and display. 

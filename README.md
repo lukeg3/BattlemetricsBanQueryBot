@@ -2,7 +2,7 @@
 
 created by lukeg3
 
-[Insert Description Here]
+This bot leverages the Battlemetrics RCON API to display information about Squad players and their bans in a Discord channel.
 
 ## Environment Setup
 
@@ -37,7 +37,7 @@ in the config.ini file.
 
 ## Games this works with
 
-At this time, this bot has only been tested with Squad. It should work for other games. 
+At this time, this bot has only been tested with Squad. It should work for other games with slight modifications to the data you wish to embed and display. 
 
 ## Sources
 
